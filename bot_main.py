@@ -81,6 +81,7 @@ async def categories(message: types.Message):
     await bot.delete_message(message.chat.id, message.message_id+2)
 
 
+
 # команда обработки нажатия на кнопку inline keyboard
 @dp.callback_query_handler(lambda callback_query: True)
 async def reply_to_button(call: types.CallbackQuery):
