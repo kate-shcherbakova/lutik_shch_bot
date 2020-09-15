@@ -21,6 +21,11 @@ dp = Dispatcher(bot)
 # инициализируем соединение с БД
 dbase = SQLighter('dbase.db')
 
+block_number = 0
+n_of_blocks = 4
+p = Image()
+name_of_cat = p.get_categories()
+
 
 def edit_category_name(category_name):
     category_name = category_name.strip('/')
@@ -59,14 +64,12 @@ def reply(text):
     return markup
 
 
-# команда отображения всех категорий with inline keyboard
-@dp.message_handler(commands=['categories'])
-async def categories(message: types.Message):
-    p = Image()
-    name_of_cat = p.get_categories()
+def create_block(number):
     markup = InlineKeyboardMarkup(row_width=3)
-    markup_item0 = InlineKeyboardButton('All photos', callback_data='/photos')
-    markup.add(markup_item0)
+    if number == 1:
+        markup_item0 = InlineKeyboardButton('All photos', callback_data='/photos')
+        markup.add(markup_item0)
+
     index = 0
     while (index < (len(name_of_cat) / 4 - 1)):
         text1 = edit_category_name(name_of_cat[index])
@@ -75,11 +78,22 @@ async def categories(message: types.Message):
         markup_item2 = InlineKeyboardButton(text2, callback_data=name_of_cat[index + 1])
         markup.add(markup_item1, markup_item2)
         index += 2
-    await message.answer('Выберите категорию фото:', reply_markup=markup)
-    await message.answer('...', reply_markup=reply('Показать еще'))
-    print(message.message_id, message.text)
-    await bot.delete_message(message.chat.id, message.message_id+2)
 
+    if number != n_of_blocks:
+        markup_item2 = InlineKeyboardButton('Показать ещё', callback_data='/show_more')
+        markup.add(markup_item2)
+
+    return markup
+
+
+# команда отображения всех категорий with inline keyboard
+@dp.message_handler(commands=['categories'])
+async def categories(message: types.Message):
+    markup = create_block(1)
+    await message.answer('Выберите категорию фото:', reply_markup=markup)
+    #await message.answer('...', reply_markup=reply('Показать еще'))
+    #print(message.message_id, message.text)
+    #await bot.delete_message(message.chat.id, message.message_id + 2)
 
 
 # команда обработки нажатия на кнопку inline keyboard
