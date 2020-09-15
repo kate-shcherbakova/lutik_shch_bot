@@ -22,9 +22,10 @@ dp = Dispatcher(bot)
 dbase = SQLighter('dbase.db')
 
 block_number = 0
-n_of_blocks = 4
 p = Image()
-name_of_cat = p.get_categories()
+name_of_cat = p.get_categories()  # 50
+length_of_block = len(name_of_cat) // 4  # 12
+n_of_blocks = 4 + bool(len(name_of_cat) % 4)  # 5
 
 
 def edit_category_name(category_name):
@@ -70,8 +71,11 @@ def create_block(number):
         markup_item0 = InlineKeyboardButton('All photos', callback_data='/photos')
         markup.add(markup_item0)
 
-    index = 0
-    while (index < (len(name_of_cat) / 4 - 1)):
+    index = (number - 1) * length_of_block
+    index2 = number * length_of_block
+    if number == n_of_blocks:
+        index2 = len(name_of_cat)
+    while (index < index2):
         text1 = edit_category_name(name_of_cat[index])
         markup_item1 = InlineKeyboardButton(text1, callback_data=name_of_cat[index])
         text2 = edit_category_name(name_of_cat[index + 1])
@@ -89,11 +93,11 @@ def create_block(number):
 # команда отображения всех категорий with inline keyboard
 @dp.message_handler(commands=['categories'])
 async def categories(message: types.Message):
-    markup = create_block(1)
+    markup = create_block(5)
     await message.answer('Выберите категорию фото:', reply_markup=markup)
-    #await message.answer('...', reply_markup=reply('Показать еще'))
-    #print(message.message_id, message.text)
-    #await bot.delete_message(message.chat.id, message.message_id + 2)
+    # await message.answer('...', reply_markup=reply('Показать еще'))
+    # print(message.message_id, message.text)
+    # await bot.delete_message(message.chat.id, message.message_id + 2)
 
 
 # команда обработки нажатия на кнопку inline keyboard
