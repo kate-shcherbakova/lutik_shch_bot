@@ -10,6 +10,14 @@ class SQLighter:
         self.cursor = self.connection.cursor()
         self.image = Image()
 
+    def get_photo_link(self, user_id):
+        with self.connection:
+            cat = self.cursor.execute("SELECT * FROM `subscriptions` WHERE `user_id` = ?",
+                                      (user_id,)).fetchall()[0][4]
+            photo_link = self.cursor.execute("SELECT * FROM `photo_links` WHERE `category` = ?",
+                                      (cat,)).fetchall()
+            print(photo_link)
+
     def update_category(self, user_id, category):
         with self.connection:
             return self.cursor.execute("UPDATE `subscriptions` SET `category` = ? WHERE `user_id` = ?",
@@ -17,17 +25,9 @@ class SQLighter:
 
     def fill_photo_links(self):
         for category in self.image.get_categories():
-            if category != '/work-from-home' and category != '/business' and category != '/shop-local' and category != \
-                    '/womens-day' and category != '/video-call-backgrounds' and category != \
-                    '/female-photographer' and category != '/spring' and category != '/fashion' and category != \
-                    '/feel-good-photos' and category != '/retail' and category != '/background' and category != \
-                    '/landscape' and category != '/food' and category != '/urban-life' and category != \
-                    '/work' and category != '/home' and category != '/accessories' and category != \
-                    '/people' and category != '/flowers' and category != '/beauty' and category != \
-                    '/money':
-                for link in self.image.get_img_link(category):
-                    if not self.link_exists(link):
-                        self.insert_photo_link(link, category)
+            for link in self.image.get_img_link(category):
+                if not self.link_exists(link):
+                    self.insert_photo_link(link, category)
 
     def link_exists(self, link):
         with self.connection:

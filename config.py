@@ -1,5 +1,5 @@
 TOKEN = '1165000408:AAFyKNUxM-tgm3NOIsBvUnbMGGhh-EGoU9E'  # Токен Лютика
-
+global_number = 1
 '''
 Commands:
 start - начало работы бота

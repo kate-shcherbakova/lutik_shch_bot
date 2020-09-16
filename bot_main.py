@@ -65,6 +65,7 @@ def reply(text):
     return markup
 
 
+# возвращает Inline Keyboard - блок категорий под номером
 def create_block(number):
     markup = InlineKeyboardMarkup(row_width=3)
     if number == 1:
@@ -84,7 +85,7 @@ def create_block(number):
         index += 2
 
     if number != n_of_blocks:
-        markup_item2 = InlineKeyboardButton('Показать ещё', callback_data='/show_more')
+        markup_item2 = InlineKeyboardButton('Показать ещё', callback_data='show_more')
         markup.add(markup_item2)
 
     return markup
@@ -93,7 +94,8 @@ def create_block(number):
 # команда отображения всех категорий with inline keyboard
 @dp.message_handler(commands=['categories'])
 async def categories(message: types.Message):
-    markup = create_block(5)
+    config.global_number = 1
+    markup = create_block(config.global_number)
     await message.answer('Выберите категорию фото:', reply_markup=markup)
     # await message.answer('...', reply_markup=reply('Показать еще'))
     # print(message.message_id, message.text)
@@ -104,8 +106,16 @@ async def categories(message: types.Message):
 @dp.callback_query_handler(lambda callback_query: True)
 async def reply_to_button(call: types.CallbackQuery):
     try:
-        cat = call.data
-        dbase.update_category(call.from_user.id, cat)
+        if call.data == 'show_more':
+            if config.global_number == n_of_blocks:
+                config.global_number = 1
+            else:
+                config.global_number += 1
+            markup = create_block(config.global_number)
+            await bot.send_message(call.message.chat.id, 'Выберите категорию фото:', reply_markup=markup)
+        else:
+            cat = call.data
+            dbase.update_category(call.from_user.id, cat)
     except Exception as exc:
         print('ERROR' + repr(exc))
 
@@ -142,10 +152,9 @@ async def start(message: types.Message):
 # команда отправки фото
 @dp.message_handler(commands=['photo'])
 async def photo(message: types.Message):
-    p = Image()
     # link - ссылка на картинку .jpg
-    link = p.get_img_link()
-    filename = p.download_img(link)
+    link = dbase.get_photo_link(message.from_user.id)
+    '''filename = p.download_img(link)
     with open(filename, 'rb') as photo:
         await bot.send_photo(
             message.from_user.id,
@@ -154,7 +163,7 @@ async def photo(message: types.Message):
             disable_notification=True
         )
         p.remove_img(filename)
-
+'''
 
 # хэндлер для принятия остальных сообщений
 @dp.message_handler()
