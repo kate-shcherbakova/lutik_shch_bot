@@ -28,7 +28,9 @@ length_of_block = len(name_of_cat) // 4  # 12
 n_of_blocks = 4 + bool(len(name_of_cat) % 4)  # 5
 
 
-def edit_category_name(category_name):
+def edit_category_name(category_name, flag=False):
+    if flag:
+        category_name = category_name.strip('.jpg')
     category_name = category_name.strip('/')
     category_name = category_name.replace('-', ' ')
     category_name = category_name.capitalize()
@@ -116,6 +118,7 @@ async def reply_to_button(call: types.CallbackQuery):
         else:
             cat = call.data
             dbase.update_category(call.from_user.id, cat)
+            await bot.send_message(call.message.chat.id, 'Вы выбрали категорию {0}'.format(edit_category_name(cat)))
     except Exception as exc:
         print('ERROR' + repr(exc))
 
@@ -153,17 +156,21 @@ async def start(message: types.Message):
 @dp.message_handler(commands=['photo'])
 async def photo(message: types.Message):
     # link - ссылка на картинку .jpg
+    a: types.Message
+    a = await message.answer('Подожди немножко. Я ищу лучшее фото...')
+    m_id = a.message_id
     link = dbase.get_photo_link(message.from_user.id)
-    '''filename = p.download_img(link)
+    filename = p.download_img(link)
     with open(filename, 'rb') as photo:
         await bot.send_photo(
             message.from_user.id,
             photo,
-            caption='PICTURE',
+            caption=edit_category_name(filename, True),
             disable_notification=True
         )
-        p.remove_img(filename)
-'''
+    await bot.delete_message(message.chat.id, m_id)
+    p.remove_img(filename)
+
 
 # хэндлер для принятия остальных сообщений
 @dp.message_handler()

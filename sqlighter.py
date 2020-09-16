@@ -1,5 +1,6 @@
 import sqlite3
 from parser_file import Image
+import random
 
 
 class SQLighter:
@@ -14,9 +15,12 @@ class SQLighter:
         with self.connection:
             cat = self.cursor.execute("SELECT * FROM `subscriptions` WHERE `user_id` = ?",
                                       (user_id,)).fetchall()[0][4]
-            photo_link = self.cursor.execute("SELECT * FROM `photo_links` WHERE `category` = ?",
+            photo_link_array = self.cursor.execute("SELECT * FROM `photo_links` WHERE `category` = ?",
                                       (cat,)).fetchall()
-            print(photo_link)
+            number = random.randint(0, len(photo_link_array)-1)
+            photo_link = photo_link_array[number][1]
+
+            return photo_link
 
     def update_category(self, user_id, category):
         with self.connection:
