@@ -1,5 +1,6 @@
 import config
 # импортируем файл с Api Token бота
+import asyncio
 from parser_file import Image
 # импортируем файл парсера
 import logging
@@ -26,45 +27,7 @@ p = Image()
 name_of_cat = p.get_categories()  # 50
 length_of_block = len(name_of_cat) // 4  # 12
 n_of_blocks = 4 + bool(len(name_of_cat) % 4)  # 5
-
-
-def edit_category_name(category_name, flag=False):
-    if flag:
-        category_name = category_name.strip('.jpg')
-    category_name = category_name.strip('/')
-    category_name = category_name.replace('-', ' ')
-    category_name = category_name.capitalize()
-    return category_name
-
-
-# команда активации подписки
-@dp.message_handler(commands=['subscribe'])
-async def subscribe(message: types.Message):
-    if not dbase.subscriber_exists(message.from_user.id):
-        # если юзера нет в базе, добавляем его
-        dbase.add_subscriber(message.from_user.id, message.from_user.username)
-        await message.answer("Вы успешно подписаны на рассылку")
-    elif dbase.status(message.from_user.id):
-        # если он уже есть и подписан
-        await message.answer("Вы итак подписаны")
-    else:
-        # если он уже есть но не подписан то обновляем статус подписки
-        dbase.update_subscription(message.from_user.id, True)
-        await message.answer("Вы успешно подписаны на рассылку")
-
-
-# пасхалка
-@dp.message_handler(commands=['misha'])
-async def misha(message: types.Message):
-    await message.answer('Удачной тренировки!')
-
-
-# команда создания ReplyKeyboardMarkup
-def reply(text):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    item = KeyboardButton(text)
-    markup.add(item)
-    return markup
+com = ['/photo', '/start', '/categories', '/subscribe', '/unsubscribe', '/status']
 
 
 # возвращает Inline Keyboard - блок категорий под номером
@@ -93,17 +56,6 @@ def create_block(number):
     return markup
 
 
-# команда отображения всех категорий with inline keyboard
-@dp.message_handler(commands=['categories'])
-async def categories(message: types.Message):
-    config.global_number = 1
-    markup = create_block(config.global_number)
-    await message.answer('Выберите категорию фото:', reply_markup=markup)
-    # await message.answer('...', reply_markup=reply('Показать еще'))
-    # print(message.message_id, message.text)
-    # await bot.delete_message(message.chat.id, message.message_id + 2)
-
-
 # команда обработки нажатия на кнопку inline keyboard
 @dp.callback_query_handler(lambda callback_query: True)
 async def reply_to_button(call: types.CallbackQuery):
@@ -123,33 +75,14 @@ async def reply_to_button(call: types.CallbackQuery):
         print('ERROR' + repr(exc))
 
 
-# команда отписки
-@dp.message_handler(commands=['unsubscribe'])
-async def unsubscribe(message: types.Message):
-    if not dbase.subscriber_exists(message.from_user.id) or not dbase.status(message.from_user.id):
-        dbase.add_subscriber(message.from_user.id, message.from_user.username, False)
-        await message.answer("Вы итак не подписаны")
-    else:
-        dbase.update_subscription(message.from_user.id, False)
-        await message.answer("Вы отписаны от рассылки")
-
-
-# команда проверки статуса
-@dp.message_handler(commands=['status'])
-async def status(message: types.Message):
-    if dbase.status(message.from_user.id):
-        await message.answer("Вы подписаны")
-    else:
-        await message.answer("Вы не подписаны")
-
-
-# команда старт
-@dp.message_handler(commands=['start'])
-async def start(message: types.Message):
-    await message.answer("Привет {0}!".format(message.from_user.first_name))
-    await message.answer(
-        "Вот мои команды:\n/start - начало работы бота\n/categories - показать все категории\n/photo - получить фото\n/subscribe - подписаться на рассылку\n/unsubscribe - отписаться от рассылки\n/status - проверить статус подписки" \
-            .format(message.from_user.first_name))
+# /photo-cat.jpeg = Photo cat
+def edit_category_name(category_name, flag=False):
+    if flag:
+        category_name = category_name.strip('.jpg')
+    category_name = category_name.strip('/')
+    category_name = category_name.replace('-', ' ')
+    category_name = category_name.capitalize()
+    return category_name
 
 
 # команда отправки фото
@@ -170,6 +103,81 @@ async def photo(message: types.Message):
         )
     await bot.delete_message(message.chat.id, m_id)
     p.remove_img(filename)
+
+
+# команда старт
+@dp.message_handler(commands=['start'])
+async def start(message: types.Message):
+    # создание ReplyKeyboardMarkup
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    for command in com:
+        item = KeyboardButton(command)
+        markup.add(item)
+
+    await message.answer("Привет {0}!".format(message.from_user.first_name))
+    await message.answer(
+        "Вот мои команды:\n/start - начало работы бота\n/categories - показать все категории\n/photo - получить фото\n/subscribe - подписаться на рассылку\n/unsubscribe - отписаться от рассылки\n/status - проверить статус подписки" \
+            .format(message.from_user.first_name), reply_markup=markup)
+
+
+# команда отображения всех категорий with inline keyboard
+@dp.message_handler(commands=['categories'])
+async def categories(message: types.Message):
+    config.global_number = 1
+    markup = create_block(config.global_number)
+    await message.answer('Выберите категорию фото:', reply_markup=markup)
+
+
+async def scheduled_photo(sec):
+    while True:
+        await asyncio.sleep(sec)
+        await photo() ???
+
+
+# команда активации подписки
+@dp.message_handler(commands=['subscribe'])
+async def subscribe(message: types.Message):
+    if not dbase.subscriber_exists(message.from_user.id):
+        # если юзера нет в базе, добавляем его
+        dbase.add_subscriber(message.from_user.id, message.from_user.username)
+        await message.answer("Вы успешно подписаны на рассылку")
+    elif dbase.status(message.from_user.id):
+        # если он уже есть и подписан
+        await message.answer("Вы итак подписаны")
+    else:
+        # если он уже есть но не подписан то обновляем статус подписки
+        dbase.update_subscription(message.from_user.id, True)
+        await message.answer("Вы успешно подписаны на рассылку")
+
+    dp.loop.create_task(scheduled_photo(10))
+
+
+# команда отписки
+@dp.message_handler(commands=['unsubscribe'])
+async def unsubscribe(message: types.Message):
+    if not dbase.subscriber_exists(message.from_user.id) or not dbase.status(message.from_user.id):
+        dbase.add_subscriber(message.from_user.id, message.from_user.username, False)
+        await message.answer("Вы итак не подписаны")
+    else:
+        dbase.update_subscription(message.from_user.id, False)
+        await message.answer("Вы отписаны от рассылки")
+
+    dp.loop.close()
+
+
+# команда проверки статуса
+@dp.message_handler(commands=['status'])
+async def status(message: types.Message):
+    if dbase.status(message.from_user.id):
+        await message.answer("Вы подписаны")
+    else:
+        await message.answer("Вы не подписаны")
+
+
+# пасхалка
+@dp.message_handler(commands=['misha'])
+async def misha(message: types.Message):
+    await message.answer('Удачной тренировки!')
 
 
 # хэндлер для принятия остальных сообщений
