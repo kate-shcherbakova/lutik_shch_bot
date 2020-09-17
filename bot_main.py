@@ -84,25 +84,28 @@ def edit_category_name(category_name, flag=False):
     category_name = category_name.capitalize()
     return category_name
 
-
-# команда отправки фото
-@dp.message_handler(commands=['photo'])
-async def photo(message: types.Message):
+async def send_photo(user_id):
     # link - ссылка на картинку .jpg
-    a: types.Message
-    a = await message.answer('Подожди немножко. Я ищу лучшее фото...')
-    m_id = a.message_id
-    link = dbase.get_photo_link(message.from_user.id)
+    link = dbase.get_photo_link(user_id)
     filename = p.download_img(link)
     with open(filename, 'rb') as photo:
         await bot.send_photo(
-            message.from_user.id,
+            user_id,
             photo,
             caption=edit_category_name(filename, True),
             disable_notification=True
         )
-    await bot.delete_message(message.chat.id, m_id)
     p.remove_img(filename)
+
+
+# команда отправки фото
+@dp.message_handler(commands=['photo'])
+async def photo(message: types.Message):
+    a: types.Message
+    a = await message.answer('Подожди немножко. Я ищу лучшее фото...')
+    m_id = a.message_id
+    await send_photo(message.from_user.id)
+    await bot.delete_message(message.chat.id, m_id)
 
 
 # команда старт
@@ -128,10 +131,11 @@ async def categories(message: types.Message):
     await message.answer('Выберите категорию фото:', reply_markup=markup)
 
 
-async def scheduled_photo(sec):
+
+async def scheduled_photo(sec, user_id):
     while True:
+        await send_photo(user_id)
         await asyncio.sleep(sec)
-        await photo() ???
 
 
 # команда активации подписки
@@ -149,7 +153,8 @@ async def subscribe(message: types.Message):
         dbase.update_subscription(message.from_user.id, True)
         await message.answer("Вы успешно подписаны на рассылку")
 
-    dp.loop.create_task(scheduled_photo(10))
+    user_id = message.from_user.id
+    dp.loop.create_task(scheduled_photo(10, user_id))
 
 
 # команда отписки
@@ -161,7 +166,7 @@ async def unsubscribe(message: types.Message):
     else:
         dbase.update_subscription(message.from_user.id, False)
         await message.answer("Вы отписаны от рассылки")
-
+        
     dp.loop.close()
 
 
