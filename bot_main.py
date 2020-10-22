@@ -5,6 +5,7 @@ from parser_file import Image
 # импортируем файл парсера
 import logging
 # 1 - мы импортируем встроенную библиотеку logging
+from datetime import datetime
 # для того чтобы вышло сообщение с юзернеймом бота (в нашем случае, только для этого)
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardRemove, \
@@ -27,8 +28,7 @@ p = Image()
 name_of_cat = p.get_categories()  # 50
 length_of_block = len(name_of_cat) // 4  # 12
 n_of_blocks = 4 + bool(len(name_of_cat) % 4)  # 5
-com = ['/photo', '/start', '/categories', '/subscribe', '/unsubscribe', '/status']
-
+com = ['/📷Фото', '/☰Категории', '/☺Подписаться', '/😢Отписаться', '/❓Статус']
 
 # возвращает Inline Keyboard - блок категорий под номером
 def create_block(number):
@@ -84,22 +84,26 @@ def edit_category_name(category_name, flag=False):
     category_name = category_name.capitalize()
     return category_name
 
+
 async def send_photo(user_id):
     # link - ссылка на картинку .jpg
     link = dbase.get_photo_link(user_id)
     filename = p.download_img(link)
-    with open(filename, 'rb') as photo:
-        await bot.send_photo(
-            user_id,
-            photo,
-            caption=edit_category_name(filename, True),
-            disable_notification=True
-        )
-    p.remove_img(filename)
+    try:
+        with open(filename, 'rb') as photo:
+            await bot.send_photo(
+                user_id,
+                photo,
+                caption=edit_category_name(filename, True),
+                disable_notification=True
+            )
+        p.remove_img(filename)
+    except:
+        pass
 
 
 # команда отправки фото
-@dp.message_handler(commands=['photo'])
+@dp.message_handler(commands=['📷Фото'])
 async def photo(message: types.Message):
     a: types.Message
     a = await message.answer('Подожди немножко. Я ищу лучшее фото...')
@@ -118,28 +122,30 @@ async def start(message: types.Message):
         markup.add(item)
 
     await message.answer("Привет {0}!".format(message.from_user.first_name))
-    await message.answer(
-        "Вот мои команды:\n/start - начало работы бота\n/categories - показать все категории\n/photo - получить фото\n/subscribe - подписаться на рассылку\n/unsubscribe - отписаться от рассылки\n/status - проверить статус подписки" \
-            .format(message.from_user.first_name), reply_markup=markup)
+    await message.answer(config.start_text.format(message.from_user.first_name), reply_markup=markup)
+
 
 
 # команда отображения всех категорий with inline keyboard
-@dp.message_handler(commands=['categories'])
+@dp.message_handler(commands=['☰Категории'])
 async def categories(message: types.Message):
     config.global_number = 1
     markup = create_block(config.global_number)
     await message.answer('Выберите категорию фото:', reply_markup=markup)
 
 
-
-async def scheduled_photo(sec, user_id):
+async def scheduled_photo(user_id):
+    sec = 14400
     while True:
-        await send_photo(user_id)
-        await asyncio.sleep(sec)
+        if dbase.status(user_id):
+            await asyncio.sleep(sec)
+            await send_photo(user_id)
+            print(datetime.now())
+
 
 
 # команда активации подписки
-@dp.message_handler(commands=['subscribe'])
+@dp.message_handler(commands=['☺Подписаться'])
 async def subscribe(message: types.Message):
     if not dbase.subscriber_exists(message.from_user.id):
         # если юзера нет в базе, добавляем его
@@ -154,11 +160,11 @@ async def subscribe(message: types.Message):
         await message.answer("Вы успешно подписаны на рассылку")
 
     user_id = message.from_user.id
-    dp.loop.create_task(scheduled_photo(10, user_id))
+    dp.loop.create_task(scheduled_photo(user_id))
 
 
 # команда отписки
-@dp.message_handler(commands=['unsubscribe'])
+@dp.message_handler(commands=['😢Отписаться'])
 async def unsubscribe(message: types.Message):
     if not dbase.subscriber_exists(message.from_user.id) or not dbase.status(message.from_user.id):
         dbase.add_subscriber(message.from_user.id, message.from_user.username, False)
@@ -166,23 +172,15 @@ async def unsubscribe(message: types.Message):
     else:
         dbase.update_subscription(message.from_user.id, False)
         await message.answer("Вы отписаны от рассылки")
-        
-    dp.loop.close()
 
 
 # команда проверки статуса
-@dp.message_handler(commands=['status'])
+@dp.message_handler(commands=['❓Статус'])
 async def status(message: types.Message):
     if dbase.status(message.from_user.id):
         await message.answer("Вы подписаны")
     else:
         await message.answer("Вы не подписаны")
-
-
-# пасхалка
-@dp.message_handler(commands=['misha'])
-async def misha(message: types.Message):
-    await message.answer('Удачной тренировки!')
 
 
 # хэндлер для принятия остальных сообщений
