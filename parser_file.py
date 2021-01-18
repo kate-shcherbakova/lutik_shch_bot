@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup as BS
 import re
-import random
 from urllib.parse import urlparse
 import os.path
 
@@ -64,7 +63,8 @@ class Image:
     def get_img_link(self, category='/photos'):
         self.URL = self.HOST + category
         pages = self.get_number_of_pages(self.URL)
-        self.img_link = []
+        self.img_links = []
+        self.img_links.clear()
         for page in range(pages):
             self.URL = self.HOST + category
             if page != 0:

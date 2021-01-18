@@ -16,8 +16,8 @@ class SQLighter:
             cat = self.cursor.execute("SELECT * FROM `subscriptions` WHERE `user_id` = ?",
                                       (user_id,)).fetchall()[0][4]
             photo_link_array = self.cursor.execute("SELECT * FROM `photo_links` WHERE `category` = ?",
-                                      (cat,)).fetchall()
-            number = random.randint(0, len(photo_link_array)-1)
+                                                   (cat,)).fetchall()
+            number = random.randint(0, len(photo_link_array) - 1)
             photo_link = photo_link_array[number][1]
 
             return photo_link
@@ -27,16 +27,32 @@ class SQLighter:
             return self.cursor.execute("UPDATE `subscriptions` SET `category` = ? WHERE `user_id` = ?",
                                        (category, user_id))
 
+    def delete_category(self, category):
+        with self.connection:
+            return self.cursor.execute("DELETE FROM `photo_links` WHERE `category` = ?", (category,))
+
+    def clear_dbase(self, table='sub_photo_links'):
+        with self.connection:
+            return self.cursor.execute("DELETE FROM {0}".format(table))
+
     def fill_photo_links(self):
         for category in self.image.get_categories():
+            count = 0
+            print(category)
             for link in self.image.get_img_link(category):
-                if not self.link_exists(link):
+                if not self.link_exists(link, category) and count < 100:
                     self.insert_photo_link(link, category)
+                    count += 1
 
-    def link_exists(self, link):
+    def link_exists(self, link, category=''):
         with self.connection:
-            result = self.cursor.execute('SELECT * FROM `photo_links` WHERE `link` = ?', (link,)).fetchall()
-            return bool(len(result))
+            if category == '':
+                result = self.cursor.execute('SELECT * FROM `photo_links` WHERE `link` = ?', (link,)).fetchall()
+                return bool(len(result))
+            else:
+                result = self.cursor.execute('SELECT * FROM `photo_links` WHERE `link` = ? AND `category` = ?',
+                                             (link, category)).fetchall()
+                return bool(len(result))
 
     def insert_photo_link(self, link, category):
         with self.connection:
@@ -76,5 +92,20 @@ class SQLighter:
         """Закрываем соединение с БД"""
         self.connection.close()
 
+    def copy_sub_to_main(self):
+        with self.connection:
+            return self.cursor.execute("INSERT INTO `photo_links` SELECT * FROM `sub_photo_links`")
+
+
 # test = SQLighter()
 # test.fill_photo_links()
+# test.clear_dbase()
+'''
+    def check_amount_of_links(self):
+        with self.connection:
+            for cat in self.cursor.execute("SELECT * FROM ``"):
+                amount = self.cursor.execute("SELECT * FROM `photo_links` WHERE 'category' = ?",
+                                         (cat,)).fetchall())
+'''
+# Если категории уже нет, но пользователь ее выбрал, то сбросить до /photos
+# Сделать /photos

@@ -1,3 +1,5 @@
+import schedule
+import time
 import config
 # импортируем файл с Api Token бота
 import asyncio
@@ -5,8 +7,8 @@ from parser_file import Image
 # импортируем файл парсера
 import logging
 # 1 - мы импортируем встроенную библиотеку logging
-from datetime import datetime
 # для того чтобы вышло сообщение с юзернеймом бота (в нашем случае, только для этого)
+from datetime import datetime
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
@@ -24,11 +26,12 @@ dp = Dispatcher(bot)
 dbase = SQLighter('dbase.db')
 
 block_number = 0
-p = Image()
-name_of_cat = p.get_categories()  # 50
+picture = Image()
+name_of_cat = picture.get_categories()  # 50
 length_of_block = len(name_of_cat) // 4  # 12
 n_of_blocks = 4 + bool(len(name_of_cat) % 4)  # 5
 com = ['/📷Фото', '/☰Категории', '/☺Подписаться', '/😢Отписаться', '/❓Статус']
+
 
 # возвращает Inline Keyboard - блок категорий под номером
 def create_block(number):
@@ -88,7 +91,7 @@ def edit_category_name(category_name, flag=False):
 async def send_photo(user_id):
     # link - ссылка на картинку .jpg
     link = dbase.get_photo_link(user_id)
-    filename = p.download_img(link)
+    filename = picture.download_img(link)
     try:
         with open(filename, 'rb') as photo:
             await bot.send_photo(
@@ -97,9 +100,13 @@ async def send_photo(user_id):
                 caption=edit_category_name(filename, True),
                 disable_notification=True
             )
-        p.remove_img(filename)
+        picture.remove_img(filename)
     except:
         pass
+
+
+async def send_smth(chat_id):
+    await bot.send_message(chat_id=chat_id, text="HELLO")
 
 
 # команда отправки фото
@@ -125,23 +132,12 @@ async def start(message: types.Message):
     await message.answer(config.start_text.format(message.from_user.first_name), reply_markup=markup)
 
 
-
 # команда отображения всех категорий with inline keyboard
 @dp.message_handler(commands=['☰Категории'])
 async def categories(message: types.Message):
     config.global_number = 1
     markup = create_block(config.global_number)
     await message.answer('Выберите категорию фото:', reply_markup=markup)
-
-
-async def scheduled_photo(user_id):
-    sec = 14400
-    while True:
-        if dbase.status(user_id):
-            await asyncio.sleep(sec)
-            await send_photo(user_id)
-            print(datetime.now())
-
 
 
 # команда активации подписки
@@ -158,9 +154,7 @@ async def subscribe(message: types.Message):
         # если он уже есть но не подписан то обновляем статус подписки
         dbase.update_subscription(message.from_user.id, True)
         await message.answer("Вы успешно подписаны на рассылку")
-
-    user_id = message.from_user.id
-    dp.loop.create_task(scheduled_photo(user_id))
+    # user_id = message.from_user.id
 
 
 # команда отписки
